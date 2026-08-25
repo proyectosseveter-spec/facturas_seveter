@@ -19,8 +19,18 @@ jobs:
           node-version: '18'
           cache: 'npm'
       
+      - name: Generate package-lock.json if missing
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "⚠️ package-lock.json no encontrado. Generando..."
+            npm install --package-lock-only
+            echo "✅ package-lock.json generado"
+          else
+            echo "✅ package-lock.json encontrado"
+          fi
+      
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline
       
       - name: Build
         run: npm run build

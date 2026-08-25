@@ -20,6 +20,13 @@ jobs:
           node-version: '18'
           cache: 'npm'
       
+      - name: Generate package-lock.json
+        run: |
+          echo "📦 Generando package-lock.json..."
+          npm install --package-lock-only
+          echo "✅ package-lock.json generado"
+          ls -la package-lock.json
+      
       - name: Install dependencies
         run: npm install
       

@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Parámetros - solo admins pueden escribir
+    match /parametros/{proveedorId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+      allow update: if request.auth != null && request.auth.token.role == 'admin';
+      allow delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
+    
+    // Usuarios - solo admins pueden leer
+    match /usuarios/{userId} {
+      allow read: if request.auth != null && request.auth.token.role == 'admin';
+      allow write: if request.auth != null && request.auth.token.role == 'admin';
+      allow create: if request.auth != null && request.auth.token.role == 'admin';
+      allow update: if request.auth != null && request.auth.token.role == 'admin';
+      allow delete: if request.auth != null && request.auth.token.role == 'admin';
+    }
+  }
+}

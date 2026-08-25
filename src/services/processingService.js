@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { generateCSV } from '../utils/csvGenerator';
 
 // Configuración de proveedores

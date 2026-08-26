@@ -90,7 +90,8 @@ export const procesarArchivo = async (file, parametrosFirestore) => {
     // 3. Procesar líneas y agrupar por proveedor
     const { lineasPorProveedor, notasCredito, errores } = await procesarLineas(
       lineasFiltradas, 
-      parametrosFirestore
+      parametrosFirestore,
+      console.log(`📅 Fecha Contable: "${lineaOriginal['Fecha Contable']}"`
     );
     
     // 4. Generar archivos CSV
@@ -357,6 +358,10 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
  */
 const formatDate = (date) => {
   if (!date || isNaN(date.getTime())) return '';
+  // Si date es un string, convertirlo a Date
+  if (typeof date === 'string') {
+    date = new Date(date);
+  }
   return date.toISOString().split('T')[0];
 };
 

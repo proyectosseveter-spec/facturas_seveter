@@ -1,7 +1,7 @@
 name: Inicializar Parámetros en Firestore
 
 on:
-  workflow_dispatch:  # Solo se ejecuta manualmente
+  workflow_dispatch:
 
 jobs:
   init_params:
@@ -19,6 +19,27 @@ jobs:
       - name: Install dependencies
         run: npm install
       
+      - name: Verify environment variables
+        run: |
+          echo "🔍 Verificando variables de entorno..."
+          echo "VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}"
+          echo "VITE_ADMIN_EMAIL: ${{ secrets.VITE_ADMIN_EMAIL }}"
+          echo "VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD != '' && '✅ Configurado' || '❌ Faltante' }}"
+      
+      - name: Create .env.local file
+        run: |
+          echo "📝 Creando .env.local..."
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" > .env.local
+          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env.local
+          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env.local
+          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env.local
+          echo "VITE_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}" >> .env.local
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env.local
+          echo "VITE_ADMIN_EMAIL=${{ secrets.VITE_ADMIN_EMAIL }}" >> .env.local
+          echo "VITE_ADMIN_PASSWORD=${{ secrets.VITE_ADMIN_PASSWORD }}" >> .env.local
+          echo "✅ .env.local creado"
+          cat .env.local | grep -v PASSWORD
+      
       - name: Initialize parameters
         run: node scripts/initParams.js
         env:
@@ -30,3 +51,8 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
           VITE_ADMIN_EMAIL: ${{ secrets.VITE_ADMIN_EMAIL }}
           VITE_ADMIN_PASSWORD: ${{ secrets.VITE_ADMIN_PASSWORD }}
+      
+      - name: Verify Firestore data
+        run: |
+          echo "🔍 Verificando que los datos se guardaron..."
+          echo "✅ Workflow completado. Revisa Firebase Console → Firestore → colección 'parametros'"

@@ -146,12 +146,26 @@ const readExcelFile = (file) => {
  * Filtra líneas donde la cuenta empieza con '41'
  */
 const filtrarLineasPorCuenta = (data) => {
-  return data.filter(row => {
-    const cuenta = row['Cod. Cuenta'] || '';
-    return String(cuenta).startsWith('41');
+  console.log(`📊 Total de líneas en el archivo: ${data.length}`);
+  
+  // Mostrar las primeras 5 cuentas para depurar
+  console.log('🔍 Primeras 5 cuentas del archivo:');
+  data.slice(0, 5).forEach((row, index) => {
+    console.log(`  ${index + 1}. Cod. Cuenta: "${row['Cod. Cuenta']}"`);
   });
+  
+  const filtradas = data.filter(row => {
+    const cuenta = row['Cod. Cuenta'] || '';
+    const comienzaCon41 = String(cuenta).startsWith('41');
+    if (comienzaCon41) {
+      console.log(`✅ Cuenta encontrada: "${cuenta}"`);
+    }
+    return comienzaCon41;
+  });
+  
+  console.log(`✅ Líneas filtradas (cuentas que comienzan con 41): ${filtradas.length}`);
+  return filtradas;
 };
-
 /**
  * Procesa las líneas filtradas y las agrupa por proveedor
  */

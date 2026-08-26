@@ -34,7 +34,7 @@ export const useProcessing = () => {
           parametros[id] = params;
         } catch (error) {
           console.error(`Error obteniendo parámetros para ${id}:`, error);
-          parametros[id] = { cuentas: {}, impuestos: {} };
+          parametros[id] = { cuentaCargo: {}, impuestos: {} };
         }
       }
 

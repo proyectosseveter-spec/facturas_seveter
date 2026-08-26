@@ -1,4 +1,5 @@
-import * as XLSX from 'xlsx';
+// src/services/processingService.js
+import XLSX from 'xlsx';
 import { generateCSV } from '../utils/csvGenerator';
 
 // Configuración de proveedores
@@ -75,29 +76,17 @@ const CSV_HEADERS = [
 
 /**
  * Procesa el archivo Excel y genera los CSV por proveedor
- * @param {File} file - Archivo Excel subido por el usuario
- * @param {Object} parametrosFirestore - Parámetros obtenidos de Firestore
- * @returns {Object} Resultados del procesamiento
  */
 export const procesarArchivo = async (file, parametrosFirestore) => {
   try {
-    // 1. Leer el archivo Excel
     const data = await readExcelFile(file);
-    
-    // 2. Filtrar líneas con cuentas que empiezan con '41'
     const lineasFiltradas = filtrarLineasPorCuenta(data);
-    
-    // 3. Procesar líneas y agrupar por proveedor
     const { lineasPorProveedor, notasCredito, errores } = await procesarLineas(
       lineasFiltradas, 
-      parametrosFirestore,
-      console.log(`📅 Fecha Contable: "${lineaOriginal['Fecha Contable']}"`
+      parametrosFirestore
     );
-    
-    // 4. Generar archivos CSV
     const archivosCSV = generarArchivosCSV(lineasPorProveedor);
     
-    // 5. Retornar resultados
     return {
       success: true,
       archivosCSV,
@@ -133,6 +122,15 @@ const readExcelFile = (file) => {
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+        
+        // Mostrar nombres de columnas para depuración
+        if (jsonData.length > 0) {
+          console.log('📋 Nombres de columnas encontrados:');
+          Object.keys(jsonData[0]).forEach(key => {
+            console.log('  - "' + key + '"');
+          });
+        }
+        
         resolve(jsonData);
       } catch (error) {
         reject(new Error('Error al leer el archivo Excel: ' + error.message));
@@ -147,26 +145,30 @@ const readExcelFile = (file) => {
  * Filtra líneas donde la cuenta empieza con '41'
  */
 const filtrarLineasPorCuenta = (data) => {
-  console.log(`📊 Total de líneas en el archivo: ${data.length}`);
+  console.log('📊 Total de líneas en el archivo: ' + data.length);
   
-  // Mostrar las primeras 5 cuentas para depurar
+  // Mostrar primeras 5 cuentas para depuración
   console.log('🔍 Primeras 5 cuentas del archivo:');
-  data.slice(0, 5).forEach((row, index) => {
-    console.log(`  ${index + 1}. Cod. Cuenta: "${row['Cod. Cuenta']}"`);
-  });
+  const primeras5 = data.slice(0, 5);
+  for (let i = 0; i < primeras5.length; i++) {
+    const row = primeras5[i];
+    const cuenta = row['Cuenta'] || row['Cod. Cuenta'] || '';
+    console.log('  ' + (i + 1) + '. Cuenta: "' + cuenta + '"');
+  }
   
   const filtradas = data.filter(row => {
-    const cuenta = row['Cod. Cuenta'] || '';
+    const cuenta = row['Cuenta'] || row['Cod. Cuenta'] || '';
     const comienzaCon41 = String(cuenta).startsWith('41');
     if (comienzaCon41) {
-      console.log(`✅ Cuenta encontrada: "${cuenta}"`);
+      console.log('✅ Cuenta encontrada: "' + cuenta + '"');
     }
     return comienzaCon41;
   });
   
-  console.log(`✅ Líneas filtradas (cuentas que comienzan con 41): ${filtradas.length}`);
+  console.log('✅ Líneas filtradas (cuentas que comienzan con 41): ' + filtradas.length);
   return filtradas;
 };
+
 /**
  * Procesa las líneas filtradas y las agrupa por proveedor
  */
@@ -177,34 +179,30 @@ const procesarLineas = async (lineas, parametrosFirestore) => {
 
   for (const [index, linea] of lineas.entries()) {
     try {
-      // Identificar proveedor
       const nit = String(linea['CC/NIT'] || '').trim();
       const proveedorConfig = PROVEEDORES_CONFIG[nit];
       
       if (!proveedorConfig) {
         errores.push({
-          linea: index + 2, // +2 por header + offset
-          mensaje: `Proveedor no soportado: ${linea['Tercero'] || nit}`
+          linea: index + 2,
+          mensaje: 'Proveedor no soportado: ' + (linea['Tercero'] || nit)
         });
         continue;
       }
 
-      // Obtener parámetros del proveedor
       const params = parametrosFirestore[proveedorConfig.id];
       if (!params) {
         errores.push({
           linea: index + 2,
-          mensaje: `Parámetros no encontrados para: ${proveedorConfig.nombre}`
+          mensaje: 'Parámetros no encontrados para: ' + proveedorConfig.nombre
         });
         continue;
       }
 
-      // Extraer número de factura y placa
       const descripcionOriginal = linea['Descripción'] || '';
       const numeroFactura = extraerNumeroFactura(descripcionOriginal);
       const placa = extraerPlaca(descripcionOriginal);
 
-      // Verificar si es nota crédito
       if (esNotaCredito(numeroFactura)) {
         notasCredito.push({
           factura: numeroFactura,
@@ -215,10 +213,11 @@ const procesarLineas = async (lineas, parametrosFirestore) => {
         continue;
       }
 
-      // Si no hay placa, intentar extraer de otra forma
       const placaFinal = placa || extraerPlacaAlternativa(descripcionOriginal);
-
-      // Crear línea del archivo plano
+      
+      // Mostrar fecha para depuración
+      console.log('📅 Fecha Contable: "' + linea['Fecha Contable'] + '"');
+      
       const lineaPlano = await crearLineaPlano(
         linea, 
         proveedorConfig, 
@@ -227,7 +226,6 @@ const procesarLineas = async (lineas, parametrosFirestore) => {
         placaFinal
       );
 
-      // Agrupar por proveedor
       if (!lineasPorProveedor[proveedorConfig.id]) {
         lineasPorProveedor[proveedorConfig.id] = {
           proveedor: proveedorConfig.nombre,
@@ -266,16 +264,15 @@ const extraerPlaca = (descripcion) => {
 };
 
 /**
- * Extrae placa de forma alternativa (de diferentes formatos)
+ * Extrae placa de forma alternativa
  */
 const extraerPlacaAlternativa = (descripcion) => {
   if (!descripcion) return '';
-  // Buscar en formato: "Placa: XXXX" o "PLACA XXXX"
   const patterns = [
     /PLACA:\s*([A-Z0-9]+)/i,
     /PLACA\s+([A-Z0-9]+)/i,
     /Placa:\s*([A-Z0-9]+)/i,
-    /\(([A-Z0-9]{6,7})\)/ // formato: (SPN875)
+    /\(([A-Z0-9]{6,7})\)/
   ];
   
   for (const pattern of patterns) {
@@ -297,36 +294,50 @@ const esNotaCredito = (numeroFactura) => {
  * Crea una línea del archivo plano
  */
 const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, placa) => {
-  const fecha = new Date(lineaOriginal['Fecha Contable']);
+  // Procesar fecha
+  let fecha = new Date(lineaOriginal['Fecha Contable']);
+  // Si la fecha no es válida, intentar parsear como string
+  if (isNaN(fecha.getTime())) {
+    const fechaStr = String(lineaOriginal['Fecha Contable']).trim();
+    // Intentar diferentes formatos
+    if (fechaStr.includes('/')) {
+      const partes = fechaStr.split('/');
+      if (partes.length === 3) {
+        fecha = new Date(partes[2] + '-' + partes[1] + '-' + partes[0]);
+      }
+    } else if (fechaStr.includes('-')) {
+      fecha = new Date(fechaStr);
+    }
+    // Si aún no es válida, usar fecha actual
+    if (isNaN(fecha.getTime())) {
+      fecha = new Date();
+    }
+  }
+  
   const mesAnio = formatMesAnio(fecha);
   
-  // Obtener cargo desde parámetros
   const cuenta = lineaOriginal['Cuenta'] || '';
-  const cargo = params.cuentaCargo?.[cuenta]?.cargo || '';
+  // Buscar cargo en ambas estructuras posibles
+  const cargo = params.cuentas?.[cuenta]?.cargo || 
+                params.cuentaCargo?.[cuenta]?.cargo || '';
   
-  // Obtener impuesto desde parámetros
   const impuestoOriginal = lineaOriginal['Impuesto'] || '';
   const taxInfo = params.impuestos?.[impuestoOriginal] || {};
   const taxId = taxInfo.impuestoId || '';
   
-  // Determinar QtyEntered (1 si es crédito, -1 si es débito)
   const esDebito = (lineaOriginal['Débito'] || 0) > 0;
   const qtyEntered = esDebito ? -1 : 1;
   
-  // Valor para PriceEntered (valor absoluto del débito o crédito)
   const valor = Math.abs(lineaOriginal['Débito'] || 0) || Math.abs(lineaOriginal['Crédito'] || 0);
   
-  // Descripción de línea (Producto - PLACA: XXXX)
   const producto = lineaOriginal['Producto'] || '';
-  const descripcionLinea = `${producto.replace(/,/g, '.')} - PLACA: ${placa}`;
+  const descripcionLinea = producto.replace(/,/g, '.') + ' - PLACA: ' + placa;
   
-  // Descripción general
   const descripcionGeneral = VALORES_FIJOS.descripcionBase
     .replace('{mesAnio}', mesAnio)
     .replace('{placa}', placa);
   
-  // Proyecto
-  const proyecto = `${proveedorConfig.prefijoProyecto}${placa}${proveedorConfig.sufijoProyecto}`;
+  const proyecto = proveedorConfig.prefijoProyecto + placa + proveedorConfig.sufijoProyecto;
   
   return {
     'AD_Org_ID[Name]': VALORES_FIJOS.organizacion,
@@ -358,10 +369,6 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
  */
 const formatDate = (date) => {
   if (!date || isNaN(date.getTime())) return '';
-  // Si date es un string, convertirlo a Date
-  if (typeof date === 'string') {
-    date = new Date(date);
-  }
   return date.toISOString().split('T')[0];
 };
 
@@ -377,8 +384,8 @@ const formatMesAnio = (date) => {
   ];
   
   const mes = meses[date.getMonth()];
-  const año = date.getFullYear();
-  return `${mes} ${año}`;
+  const anio = date.getFullYear();
+  return mes + ' ' + anio;
 };
 
 /**
@@ -390,11 +397,8 @@ const generarArchivosCSV = (lineasPorProveedor) => {
   for (const [proveedorId, data] of Object.entries(lineasPorProveedor)) {
     if (data.lineas.length === 0) continue;
     
-    // Generar contenido CSV
     const csvContent = generateCSV(data.lineas, CSV_HEADERS);
-    
-    // Crear nombre de archivo
-    const nombreArchivo = `plano_${proveedorId}.csv`;
+    const nombreArchivo = 'plano_' + proveedorId + '.csv';
     
     archivos.push({
       proveedorId,
@@ -416,11 +420,17 @@ export const validarParametros = (parametros) => {
   const errores = [];
   
   for (const [proveedorId, params] of Object.entries(parametros)) {
-    if (!params.cuentas || Object.keys(params.cuentas).length === 0) {
-      errores.push(`El proveedor ${proveedorId} no tiene cuentas configuradas`);
+    // Verificar si hay cuentas en cualquiera de las dos estructuras
+    const tieneCuentas = 
+      (params.cuentas && Object.keys(params.cuentas).length > 0) ||
+      (params.cuentaCargo && Object.keys(params.cuentaCargo).length > 0);
+    
+    if (!tieneCuentas) {
+      errores.push('El proveedor ' + proveedorId + ' no tiene cuentas configuradas');
     }
+    
     if (!params.impuestos || Object.keys(params.impuestos).length === 0) {
-      errores.push(`El proveedor ${proveedorId} no tiene impuestos configurados`);
+      errores.push('El proveedor ' + proveedorId + ' no tiene impuestos configurados');
     }
   }
   

@@ -1,5 +1,6 @@
+// src/hooks/useProcessing.js
 import { useState, useCallback } from 'react';
-import { procesarArchivo, validarParametros, obtenerEstadisticas } from '../services/processingService';
+import { procesarArchivo, obtenerEstadisticas } from '../services/processingService';
 import { getParametrosProveedor } from '../services/firestoreService';
 
 export const useProcessing = () => {
@@ -9,7 +10,32 @@ export const useProcessing = () => {
   const [error, setError] = useState(null);
   const [estadisticas, setEstadisticas] = useState(null);
 
-  // Procesar archivo
+  /**
+   * Valida que los parámetros tengan cuentas configuradas
+   * Busca en ambas estructuras: cuentas y cuentaCargo
+   */
+  const validarParametros = (parametros) => {
+    const errores = [];
+    
+    for (const [proveedorId, params] of Object.entries(parametros)) {
+      // Verificar si hay cuentas en cualquiera de las dos estructuras
+      const tieneCuentas = 
+        (params.cuentas && Object.keys(params.cuentas).length > 0) ||
+        (params.cuentaCargo && Object.keys(params.cuentaCargo).length > 0);
+      
+      if (!tieneCuentas) {
+        errores.push(`El proveedor ${proveedorId} no tiene cuentas configuradas`);
+      }
+      
+      // Verificar impuestos
+      if (!params.impuestos || Object.keys(params.impuestos).length === 0) {
+        errores.push(`El proveedor ${proveedorId} no tiene impuestos configurados`);
+      }
+    }
+    
+    return errores;
+  };
+
   const processFile = useCallback(async (file) => {
     setIsProcessing(true);
     setProgress(0);
@@ -18,13 +44,8 @@ export const useProcessing = () => {
     setEstadisticas(null);
 
     try {
-      // Simular progreso inicial
       setProgress(10);
-
-      // 1. Obtener parámetros de Firestore
-      setProgress(20);
       
-      // Obtener parámetros para todos los proveedores
       const proveedoresIds = ['arca_colombia', 'march_inmobiliaria', 'union_colombiana'];
       const parametros = {};
       
@@ -34,13 +55,13 @@ export const useProcessing = () => {
           parametros[id] = params;
         } catch (error) {
           console.error(`Error obteniendo parámetros para ${id}:`, error);
-          parametros[id] = { cuentaCargo: {}, impuestos: {} };
+          parametros[id] = { cuentas: {}, cuentaCargo: {}, impuestos: {} };
         }
       }
 
       setProgress(40);
 
-      // 2. Validar parámetros
+      // Validar parámetros con la nueva función
       const erroresParametros = validarParametros(parametros);
       if (erroresParametros.length > 0) {
         throw new Error(`Errores en parámetros: ${erroresParametros.join(', ')}`);
@@ -48,12 +69,10 @@ export const useProcessing = () => {
 
       setProgress(50);
 
-      // 3. Procesar archivo
       const resultadoProcesamiento = await procesarArchivo(file, parametros);
       
       setProgress(80);
 
-      // 4. Calcular estadísticas
       const stats = obtenerEstadisticas(resultadoProcesamiento);
       
       setProgress(90);
@@ -75,7 +94,6 @@ export const useProcessing = () => {
     }
   }, []);
 
-  // Descargar un archivo CSV específico
   const downloadFile = useCallback((index) => {
     if (!resultado || !resultado.archivosCSV || index >= resultado.archivosCSV.length) {
       console.error('Archivo no disponible');
@@ -90,7 +108,6 @@ export const useProcessing = () => {
     };
   }, [resultado]);
 
-  // Descargar todos los archivos (uno por uno o en ZIP)
   const downloadAll = useCallback(() => {
     if (!resultado || !resultado.archivosCSV || resultado.archivosCSV.length === 0) {
       return null;
@@ -103,7 +120,6 @@ export const useProcessing = () => {
     }));
   }, [resultado]);
 
-  // Resetear estado
   const reset = useCallback(() => {
     setIsProcessing(false);
     setProgress(0);

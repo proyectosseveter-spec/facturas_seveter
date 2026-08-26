@@ -32,6 +32,27 @@ export const getParametrosProveedor = async (proveedorId) => {
   }
 };
 
+export const getUserByEmail = async (email) => {
+  try {
+    console.log(`🔍 Buscando usuario: ${email}`);
+    const usersRef = collection(db, 'usuarios');
+    const q = query(usersRef, where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      console.log(`✅ Usuario encontrado: ${email}`);
+      return { id: doc.id, ...doc.data() };
+    }
+    console.log(`⚠️ Usuario NO encontrado: ${email}`);
+    return null;
+  } catch (error) {
+    console.warn('⚠️ No se pudo verificar el usuario:', error.message);
+    // Retornar null en lugar de lanzar error
+    return null;
+  }
+};
+
 /**
  * Actualiza los parámetros de un proveedor
  * @param {string} proveedorId - ID del proveedor

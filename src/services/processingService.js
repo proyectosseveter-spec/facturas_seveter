@@ -287,8 +287,7 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
   
   // Obtener cargo desde parámetros
   const cuenta = lineaOriginal['Cuenta'] || '';
-  const cargo = params.cuentas?.[cuenta]?.cargo || 
-                params.cuentaCargo?.[cuenta]?.cargo || '';
+  const cargo = params.cuentaCargo?.[cuenta]?.cargo || '';
   
   // Obtener impuesto desde parámetros
   const impuestoOriginal = lineaOriginal['Impuesto'] || '';

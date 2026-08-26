@@ -19,6 +19,10 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 
+// Credenciales del admin desde variables de entorno
+const ADMIN_EMAIL = process.env.VITE_ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.VITE_ADMIN_PASSWORD;
+
 // Datos iniciales de parámetros
 const parametrosIniciales = {
   arca_colombia: {
@@ -139,8 +143,8 @@ async function initParams() {
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
-      'admin@tudominio.com',
-      'tu_contraseña_admin'
+      ADMIN_EMAIL,
+      ADMIN_PASSWORD
     );
     console.log('✅ Autenticado como admin');
 

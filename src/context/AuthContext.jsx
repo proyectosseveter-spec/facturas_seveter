@@ -25,18 +25,25 @@ export const AuthProvider = ({ children }) => {
       if (firebaseUser) {
         try {
           // Obtener rol del usuario desde Firestore
-          const userData = await getUserByEmail(firebaseUser.email);
-          if (userData) {
-            setUser({
-              ...firebaseUser,
-              role: userData.role,
-              userData: userData
-            });
-            setUserRole(userData.role);
-          } else {
-            setUser(firebaseUser);
-            setUserRole(null);
-          }
+try {
+  const userData = await getUserByEmail(firebaseUser.email);
+  if (userData) {
+    setUser({
+      ...firebaseUser,
+      role: userData.role,
+      userData: userData
+    });
+    setUserRole(userData.role);
+  } else {
+    setUser(firebaseUser);
+    setUserRole(null);
+  }
+} catch (error) {
+  // Si no se puede verificar el rol, asumir usuario normal
+  console.warn('⚠️ No se pudo verificar el rol del usuario:', error.message);
+  setUser(firebaseUser);
+  setUserRole(null);
+}
         } catch (error) {
           console.error('Error obteniendo datos del usuario:', error);
           setUser(firebaseUser);

@@ -32,27 +32,6 @@ export const getParametrosProveedor = async (proveedorId) => {
   }
 };
 
-export const getUserByEmail = async (email) => {
-  try {
-    console.log(`🔍 Buscando usuario: ${email}`);
-    const usersRef = collection(db, 'usuarios');
-    const q = query(usersRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-    
-    if (!querySnapshot.empty) {
-      const doc = querySnapshot.docs[0];
-      console.log(`✅ Usuario encontrado: ${email}`);
-      return { id: doc.id, ...doc.data() };
-    }
-    console.log(`⚠️ Usuario NO encontrado: ${email}`);
-    return null;
-  } catch (error) {
-    console.warn('⚠️ No se pudo verificar el usuario:', error.message);
-    // Retornar null en lugar de lanzar error
-    return null;
-  }
-};
-
 /**
  * Actualiza los parámetros de un proveedor
  * @param {string} proveedorId - ID del proveedor
@@ -92,13 +71,9 @@ export const getUserByEmail = async (email) => {
     console.log(`⚠️ Usuario NO encontrado: ${email}`);
     return null;
   } catch (error) {
-    console.error('❌ Error obteniendo usuario:', error);
-    // Si el error es por falta de colección, retornar null
-    if (error.code === 'permission-denied') {
-      console.warn('⚠️ Permiso denegado para leer usuarios');
-      return null;
-    }
-    throw error;
+    console.warn('⚠️ No se pudo verificar el usuario:', error.message);
+    // Retornar null en lugar de lanzar error
+    return null;
   }
 };
 

@@ -95,12 +95,12 @@ export const useProcessing = () => {
   }, []);
 
   const downloadFile = useCallback((index) => {
-    if (!resultado || !resultado.archivosCSV || index >= resultado.archivosCSV.length) {
+    if (!resultado || !resultado.archivos || index >= resultado.archivos.length) {
       console.error('Archivo no disponible');
       return null;
     }
 
-    const archivo = resultado.archivosCSV[index];
+    const archivo = resultado.archivos[index];
     return {
       nombre: archivo.nombreArchivo,
       contenido: archivo.contenido,
@@ -109,11 +109,11 @@ export const useProcessing = () => {
   }, [resultado]);
 
   const downloadAll = useCallback(() => {
-    if (!resultado || !resultado.archivosCSV || resultado.archivosCSV.length === 0) {
+    if (!resultado || !resultado.archivos || resultado.archivos.length === 0) {
       return null;
     }
 
-    return resultado.archivosCSV.map(archivo => ({
+    return resultado.archivos.map(archivo => ({
       nombre: archivo.nombreArchivo,
       contenido: archivo.contenido,
       proveedor: archivo.proveedorNombre

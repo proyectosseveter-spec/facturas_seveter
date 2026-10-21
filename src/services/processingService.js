@@ -1,5 +1,5 @@
 // src/services/processingService.js
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 const PROVEEDORES_CONFIG = {
   '860502253': {

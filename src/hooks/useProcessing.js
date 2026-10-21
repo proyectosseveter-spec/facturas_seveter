@@ -42,6 +42,7 @@ export const useProcessing = () => {
     setError(null);
     setResultado(null);
     setEstadisticas(null);
+    console.log;
 
     try {
       setProgress(10);

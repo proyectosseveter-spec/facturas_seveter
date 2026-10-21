@@ -1,17 +1,18 @@
+// src/components/ResultView.jsx
 import React from 'react';
-import { downloadCSV } from '../utils/csvGenerator';
+import { downloadXLSX } from '../utils/csvGenerator'; // 👈 cambio
+import CreditNotesReport from './CreditNotesReport';
 
 const ResultView = ({ resultado, estadisticas, onReset }) => {
   if (!resultado || !resultado.success) return null;
 
   const handleDownload = (archivo) => {
-    downloadCSV(archivo.contenido, archivo.nombreArchivo);
+    downloadXLSX(archivo.contenido, archivo.nombreArchivo); // 👈 cambio
   };
 
   const handleDownloadAll = () => {
-    // Descargar todos los archivos uno por uno (o implementar ZIP)
-    resultado.archivosCSV.forEach(archivo => {
-      downloadCSV(archivo.contenido, archivo.nombreArchivo);
+    resultado.archivos.forEach(archivo => {  // 👈 cambio archivosCSV → archivos
+      downloadXLSX(archivo.contenido, archivo.nombreArchivo);
     });
   };
 
@@ -29,7 +30,6 @@ const ResultView = ({ resultado, estadisticas, onReset }) => {
         </div>
       </div>
 
-      {/* Estadísticas */}
       {estadisticas && (
         <div className="stats-grid">
           <div className="stat-card">
@@ -51,26 +51,22 @@ const ResultView = ({ resultado, estadisticas, onReset }) => {
         </div>
       )}
 
-      {/* Archivos generados */}
       <div className="files-section">
         <h3>Archivos Generados</h3>
         <div className="files-grid">
-          {resultado.archivosCSV.map((archivo, index) => (
+          {resultado.archivos.map((archivo, index) => (  // 👈 cambio archivosCSV → archivos
             <div key={index} className="file-card">
               <div className="file-info">
-                <i className="fas fa-file-csv"></i>
+                <i className="fas fa-file-excel file-icon"></i>  {/* 👈 icono xlsx */}
                 <div>
                   <p className="file-name">{archivo.nombreArchivo}</p>
                   <p className="file-details">
-                    Proveedor: {archivo.proveedorNombre} | 
+                    Proveedor: {archivo.proveedorNombre} |
                     Líneas: {archivo.cantidadLineas}
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={() => handleDownload(archivo)}
-                className="btn-download"
-              >
+              <button onClick={() => handleDownload(archivo)} className="btn-download">
                 Descargar
               </button>
             </div>
@@ -78,37 +74,10 @@ const ResultView = ({ resultado, estadisticas, onReset }) => {
         </div>
       </div>
 
-      {/* Notas Crédito */}
       {resultado.notasCredito && resultado.notasCredito.length > 0 && (
-        <div className="credit-notes-section">
-          <h3>Notas Crédito Encontradas</h3>
-          <p className="credit-notes-info">
-            Las siguientes notas crédito no fueron incluidas en los archivos generados:
-          </p>
-          <table className="credit-notes-table">
-            <thead>
-              <tr>
-                <th># Factura</th>
-                <th>Placa</th>
-                <th>Valor</th>
-                <th>Tercero</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resultado.notasCredito.map((nota, index) => (
-                <tr key={index}>
-                  <td>{nota.factura}</td>
-                  <td>{nota.placa || '-'}</td>
-                  <td>{nota.valor.toLocaleString('es-CO')}</td>
-                  <td>{nota.tercero || '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <CreditNotesReport notasCredito={resultado.notasCredito} />
       )}
 
-      {/* Errores */}
       {resultado.errores && resultado.errores.length > 0 && (
         <div className="errors-section">
           <h3>Errores en el Procesamiento</h3>

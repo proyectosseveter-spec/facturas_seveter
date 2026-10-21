@@ -113,3 +113,18 @@ export const validateCSV = (csvContent, expectedHeaders) => {
   
   return { valid: true, headers, totalLines: lines.length - 1 };
 };
+/**
+ * Descarga un Blob XLSX
+ */
+export const downloadXLSX = (blob, filename) => {
+  if (!blob || !filename) return;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
+};

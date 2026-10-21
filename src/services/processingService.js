@@ -127,7 +127,20 @@ const readExcelFile = (file) => {
         // cellDates: true → las celdas de fecha se devuelven como Date objects
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: false, dateNF: 'yyyy-mm-dd' });
+        
+        // range: 1 le dice a SheetJS que los encabezados están en la fila 2
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
+          raw: false, 
+          dateNF: 'yyyy-mm-dd',
+          range: 1 
+        });
+        
+        // Log para verificar en consola que las columnas están bien
+        if (jsonData.length > 0) {
+          console.log('📋 Columnas detectadas:', Object.keys(jsonData[0]).slice(0, 5), '...');
+          console.log('📊 Total de filas a procesar:', jsonData.length);
+        }
+        
         resolve(jsonData);
       } catch (error) {
         reject(new Error('Error al leer el archivo Excel: ' + error.message));
@@ -137,7 +150,6 @@ const readExcelFile = (file) => {
     reader.readAsArrayBuffer(file);
   });
 };
-
 const filtrarLineasPorCuenta = (data) => {
   return data.filter(row => {
     const cuenta = row['Cuenta'] || row['Cod. Cuenta'] || '';

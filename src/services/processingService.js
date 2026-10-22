@@ -281,26 +281,42 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
 // Parseo robusto de fecha (Date / número Excel / string)
 const parseDate = (value) => {
   if (!value) return null;
+  
+  // 1. Si ya es un objeto Date
   if (value instanceof Date) {
     return isNaN(value.getTime()) ? null : value;
   }
+  
+  // 2. Si es un número serial de Excel
   if (typeof value === 'number') {
-    // Serial de Excel: días desde 1899-12-30 (ajuste del bug del año 1900)
-    const ms = (value - 25569) * 86400 * 1000;
+    const ms = Math.round((value - 25569) * 86400 * 1000);
     const d = new Date(ms);
     return isNaN(d.getTime()) ? null : d;
   }
+  
+  // 3. Si es texto
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    // Formato "YYYY-MM-DD HH:mm:ss" o "YYYY-MM-DD"
-    const m = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    
+    // Formato YYYY-MM-DD (ISO)
+    const matchISO = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (matchISO) {
+      return new Date(parseInt(matchISO[1]), parseInt(matchISO[2]) - 1, parseInt(matchISO[3]));
+    }
+    
+    // Formato DD/MM/YYYY
+    const matchES = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (matchES) {
+      return new Date(parseInt(matchES[3]), parseInt(matchES[2]) - 1, parseInt(matchES[1]));
+    }
+    
+    // Fallback
     const parsed = new Date(trimmed);
     return isNaN(parsed.getTime()) ? null : parsed;
   }
+  
   return null;
 };
-
 // Formato YYYY-MM-DD (sin hora)
 const formatDate = (date) => {
   if (!date || isNaN(date.getTime())) return '';

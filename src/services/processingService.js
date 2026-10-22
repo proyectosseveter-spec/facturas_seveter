@@ -41,43 +41,18 @@ const VALORES_FIJOS = {
 };
 
 const HEADERS = [
-  'AD_Org_ID[Name]',
-  'C_DocTypeTarget_ID[Name]',
-  'M_PriceList_ID[Name]',
-  'C_BPartner_ID[Name]',
-  'C_BPartner_Location_ID',
-  'DocumentNo',
-  'C_PaymentTerm_ID[Value]',
-  'C_Activity_ID[Name]',
-  'DateInvoiced',
-  'C_Project_ID[Value]',
-  'Description',
-  'DateAcct',
-  'C_InvoiceLine>C_Invoice_ID[DocumentNo]/K',
-  'C_InvoiceLine>Line/K',
-  'C_InvoiceLine>Description',
-  'C_InvoiceLine>M_Product_ID[Value]',
-  'C_InvoiceLine>C_Charge_ID[Name]',
-  'C_InvoiceLine>QtyEntered',
-  'C_InvoiceLine>C_Tax_ID[Name]',
-  'C_InvoiceLine>TaxAmt',
-  'C_InvoiceLine>PriceEntered'
+  'AD_Org_ID[Name]', 'C_DocTypeTarget_ID[Name]', 'M_PriceList_ID[Name]', 'C_BPartner_ID[Name]',
+  'C_BPartner_Location_ID', 'DocumentNo', 'C_PaymentTerm_ID[Value]', 'C_Activity_ID[Name]',
+  'DateInvoiced', 'C_Project_ID[Value]', 'Description', 'DateAcct',
+  'C_InvoiceLine>C_Invoice_ID[DocumentNo]/K', 'C_InvoiceLine>Line/K', 'C_InvoiceLine>Description',
+  'C_InvoiceLine>M_Product_ID[Value]', 'C_InvoiceLine>C_Charge_ID[Name]', 'C_InvoiceLine>QtyEntered',
+  'C_InvoiceLine>C_Tax_ID[Name]', 'C_InvoiceLine>TaxAmt', 'C_InvoiceLine>PriceEntered'
 ];
 
-// Columnas que se llenan solo en la primera línea de cada factura
 const METADATA_HEADERS = [
-  'AD_Org_ID[Name]',
-  'C_DocTypeTarget_ID[Name]',
-  'M_PriceList_ID[Name]',
-  'C_BPartner_ID[Name]',
-  'C_BPartner_Location_ID',
-  'DocumentNo',
-  'C_PaymentTerm_ID[Value]',
-  'C_Activity_ID[Name]',
-  'DateInvoiced',
-  'C_Project_ID[Value]',
-  'Description',
-  'DateAcct'
+  'AD_Org_ID[Name]', 'C_DocTypeTarget_ID[Name]', 'M_PriceList_ID[Name]', 'C_BPartner_ID[Name]',
+  'C_BPartner_Location_ID', 'DocumentNo', 'C_PaymentTerm_ID[Value]', 'C_Activity_ID[Name]',
+  'DateInvoiced', 'C_Project_ID[Value]', 'Description', 'DateAcct'
 ];
 
 export const procesarArchivo = async (file, parametrosFirestore) => {
@@ -89,10 +64,7 @@ export const procesarArchivo = async (file, parametrosFirestore) => {
       parametrosFirestore
     );
 
-    // Renumerar Line/K secuencialmente (10, 20, 30...) por factura
     renumerarLineasPorFactura(lineasPorProveedor);
-
-    // Generar archivos XLSX
     const archivos = generarArchivosXLSX(lineasPorProveedor);
 
     return {
@@ -127,17 +99,8 @@ const readExcelFile = (file) => {
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         
-        // raw: true para que mantenga los tipos nativos
-        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { 
-          raw: true, 
-          range: 1 
-        });
-        
-        if (jsonData.length > 0) {
-          console.log('📋 Columnas detectadas:', Object.keys(jsonData[0]));
-          console.log('📊 Total de filas a procesar:', jsonData.length);
-          console.log('📅 Ejemplo de "Fecha Contable":', jsonData[0]['Fecha Contable']);
-        }
+        // range: 1 ignora la fila 1 (título) y usa la fila 2 como encabezados
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { raw: true, range: 1 });
         
         resolve(jsonData);
       } catch (error) {
@@ -146,6 +109,13 @@ const readExcelFile = (file) => {
     };
     reader.onerror = () => reject(new Error('Error al leer el archivo'));
     reader.readAsArrayBuffer(file);
+  });
+};
+
+const filtrarLineasPorCuenta = (data) => {
+  return data.filter(row => {
+    const cuenta = row['Cuenta'] || row['Cod. Cuenta'] || '';
+    return String(cuenta).startsWith('41');
   });
 };
 
@@ -266,7 +236,7 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
     'Description': descripcionGeneral,
     'DateAcct': formatDate(fecha),
     'C_InvoiceLine>C_Invoice_ID[DocumentNo]/K': numeroFactura,
-    'C_InvoiceLine>Line/K': '',   // se asigna en renumerarLineasPorFactura
+    'C_InvoiceLine>Line/K': '', 
     'C_InvoiceLine>Description': descripcionLinea,
     'C_InvoiceLine>M_Product_ID[Value]': '',
     'C_InvoiceLine>C_Charge_ID[Name]': cargo,
@@ -274,50 +244,37 @@ const crearLineaPlano = (lineaOriginal, proveedorConfig, params, numeroFactura, 
     'C_InvoiceLine>C_Tax_ID[Name]': taxId,
     'C_InvoiceLine>TaxAmt': '',
     'C_InvoiceLine>PriceEntered': valor,
-    '_numeroFactura': numeroFactura  // campo temporal para renumerar
+    '_numeroFactura': numeroFactura
   };
 };
 
-// Parseo robusto de fecha (Date / número Excel / string)
 const parseDate = (value) => {
   if (!value) return null;
   
-  // 1. Si ya es un objeto Date
   if (value instanceof Date) {
     return isNaN(value.getTime()) ? null : value;
   }
-  
-  // 2. Si es un número serial de Excel
   if (typeof value === 'number') {
     const ms = Math.round((value - 25569) * 86400 * 1000);
     const d = new Date(ms);
     return isNaN(d.getTime()) ? null : d;
   }
-  
-  // 3. Si es texto
   if (typeof value === 'string') {
     const trimmed = value.trim();
-    
-    // Formato YYYY-MM-DD (ISO)
     const matchISO = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (matchISO) {
       return new Date(parseInt(matchISO[1]), parseInt(matchISO[2]) - 1, parseInt(matchISO[3]));
     }
-    
-    // Formato DD/MM/YYYY
     const matchES = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
     if (matchES) {
       return new Date(parseInt(matchES[3]), parseInt(matchES[2]) - 1, parseInt(matchES[1]));
     }
-    
-    // Fallback
     const parsed = new Date(trimmed);
     return isNaN(parsed.getTime()) ? null : parsed;
   }
-  
   return null;
 };
-// Formato YYYY-MM-DD (sin hora)
+
 const formatDate = (date) => {
   if (!date || isNaN(date.getTime())) return '';
   const y = date.getFullYear();
@@ -326,7 +283,6 @@ const formatDate = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-// Formato YYYY-MM-DD 00:00:00
 const formatDateTime = (date) => {
   const dateStr = formatDate(date);
   return dateStr ? `${dateStr} 00:00:00` : '';
@@ -341,7 +297,6 @@ const formatMesAnio = (date) => {
   return `${meses[date.getMonth()]} ${date.getFullYear()}`;
 };
 
-// Renumera Line/K como 10, 20, 30... por factura dentro de cada proveedor
 const renumerarLineasPorFactura = (lineasPorProveedor) => {
   for (const data of Object.values(lineasPorProveedor)) {
     const contadores = {};
@@ -361,7 +316,6 @@ const generarArchivosXLSX = (lineasPorProveedor) => {
   for (const [proveedorId, data] of Object.entries(lineasPorProveedor)) {
     if (data.lineas.length === 0) continue;
 
-    // Construir matriz (array de arrays) para aoa_to_sheet
     const rows = [HEADERS];
     let lastInvoice = null;
 
@@ -370,7 +324,6 @@ const generarArchivosXLSX = (lineasPorProveedor) => {
       const isFirstLine = factura !== lastInvoice;
 
       const row = HEADERS.map(header => {
-        // Metadata: solo en la primera línea de cada factura
         if (METADATA_HEADERS.includes(header) && !isFirstLine) {
           return '';
         }
